@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atin's Paragraph Hangman Game</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Raleway', sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1, h2 {
+      font-size: 36px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+    }
+
+    #game-container, #setup-container, #supplementary-game-container {
+      background: #fff;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      margin: 20px;
+      max-width: 800px;
+      width: 90%;
+      text-align: center;
+    }
+
+    #incorrect-guesses {
+      background: #fff;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      max-width: 200px;
+      width: 90%;
+    }
+
+    .hidden-word {
+      margin: 0 8px;
+      padding: 10px 15px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      display: inline-block;
+      font-size: 28px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    .revealed {
+      background: #74ebd5;
+      color: #fff;
+    }
+
+    input[type="text"], input[type="number"] {
+      font-size: 20px;
+      padding: 12px;
+      border: 2px solid #acb6e5;
+      border-radius: 8px;
+      margin: 10px 0;
+      width: 90%;
+    }
+
+    button {
+      background: #74ebd5;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #acb6e5;
+    }
+
+    #logos img {
+      max-height: 80px;
+      margin: 10px;
+    }
+
+    #incorrect-guesses ul {
+      list-style: none;
+      padding: 0;
+      font-weight: bold;
+      color: #dc3545;
+      columns: 2;
+      column-gap: 20px;
+    }
+
+    #result {
+      font-size: 28px;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #28a745;
+    }
+
+    #result.fail {
+      color: #dc3545;
+    }
+
+    #repeat-message {
+      color: #ff6347;
+      font-size: 24px;
+      font-weight: bold;
+      display: none;
+    }
+
+    #share-link {
+      margin: 10px;
+      padding: 10px;
+      border: 1px solid #acb6e5;
+      border-radius: 8px;
+      background: #fff;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Atin's Paragraph Hangman Game</h1>
+
+  <div id="logos">
+    <img src="MADE BY ATIN 2 logo .png" alt="Made by Atin Logo">
+    <img src="newcitycollegelogo.png" alt="New City College Logo">
+  </div>
+
+  <div id="setup-container">
+    <h2>Game Setup</h2>
+    <textarea id="paragraph-input" placeholder="Enter your secret paragraph here..." rows="4" cols="50"></textarea><br>
+    <input type="number" id="max-attempts-input" placeholder="Number of guesses" min="1" /><br><br>
+    <button id="start-game-button">Start Game</button>
+    <button id="share-game-button">Share Game</button>
+    <div id="share-link"></div>
+  </div>
+
+  <div id="game-container" style="display: none;">
+    <div id="paragraph-container"></div>
+
+    <div id="input-container">
+      <input type="text" id="word-guess" placeholder="Enter a word" />
+      <button id="guess-button">Guess</button>
+    </div>
+
+    <div id="repeat-message">Repeat word!</div>
+    <div id="attempts-remaining"></div>
+    <div id="result"></div>
+  </div>
+
+  <div id="incorrect-guesses" style="display: none;">
+    <h2>Incorrect Guesses</h2>
+    <ul id="incorrect-guesses-list"></ul>
+  </div>
+
+  <script>
+    document.getElementById("start-game-button").addEventListener("click", startGame);
+    document.getElementById("share-game-button").addEventListener("click", generateShareLink);
+    document.getElementById("guess-button").addEventListener("click", handleGuess);
+
+    function normalize(word) {
+      return word.toLowerCase().replace(/[^a-z0-9]/gi, '');
+    }
+
+    function startGame() {
+      const paragraph = document.getElementById("paragraph-input").value.trim();
+      const maxAttempts = parseInt(document.getElementById("max-attempts-input").value) || 6;
+
+      if (!paragraph) {
+        alert("Please enter a paragraph to start the game.");
+        return;
+      }
+
+      const words = paragraph.split(/\s+/);
+      const guessedWords = new Array(words.length).fill(false);
+
+      document.getElementById("setup-container").style.display = "none";
+      document.getElementById("game-container").style.display = "block";
+
+      updateGame(words, guessedWords, maxAttempts);
+    }
+
+    function generateShareLink() {
+      const paragraph = encodeURIComponent(document.getElementById("paragraph-input").value);
+      const attempts = document.getElementById("max-attempts-input").value || 6;
+      const url = `${window.location.href.split('?')[0]}?paragraph=${paragraph}&attempts=${attempts}`;
+      document.getElementById("share-link").textContent = url;
+    }
+
+    function handleGuess() {
+      const guess = normalize(document.getElementById("word-guess").value.trim());
+      alert("Guess submitted: " + guess);
+    }
+
+    function updateGame(words, guessedWords, attemptsLeft) {
+      document.getElementById("paragraph-container").textContent = words.map((word, i) => guessedWords[i] ? word : '*'.repeat(word.length)).join(' ');
+      document.getElementById("attempts-remaining").textContent = `Attempts remaining: ${attemptsLeft}`;
+    }
+
+    window.onload = function() {
+      const params = new URLSearchParams(window.location.search);
+      const paragraph = params.get("paragraph");
+      const attempts = params.get("attempts");
+
+      if (paragraph && attempts) {
+        document.getElementById("paragraph-input").value = decodeURIComponent(paragraph);
+        document.getElementById("max-attempts-input").value = attempts;
+        startGame();
+      }
+    };
+  </script>
+
+</body>
+</html>
