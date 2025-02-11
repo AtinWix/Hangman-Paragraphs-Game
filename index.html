@@ -194,7 +194,7 @@
       document.getElementById('incorrect-guesses').textContent = 'Incorrect guesses: ' + incorrectGuesses.join(', ');
 
       if (revealedWords.every((word, index) => !/[a-zA-Z0-9]/.test(hiddenParagraph.split(/(\s+|[^\w]+)/)[index]) || word === hiddenParagraph.split(/(\s+|[^\w]+)/)[index])) {
-        document.getElementById('result').innerHTML = '<strong>🎉 Yay! You guessed all the words! 🎉</strong>';
+        document.getElementById('result').innerHTML = '<strong> Yay! <br> You guessed all the words! 🎉</strong>';
       }
     }
 
