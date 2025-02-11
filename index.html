@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Atin's Guess-The-Words Game</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
+    body {
+      font-family: 'Raleway', sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #main-content {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+      text-align: center;
+      width: 90%;
+      max-width: 800px;
+    }
+    h1, h2 {
+      font-size: 42px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+      margin-bottom: 20px;
+    }
+    textarea, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      margin: 10px 0;
+      font-size: 18px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .button-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    button {
+      background: #ff7e5f;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      margin: 5px;
+    }
+    button:hover {
+      background: #feb47b;
+      transform: scale(1.05);
+    }
+    #paragraph-container {
+      font-size: 30px;
+      letter-spacing: 4px;
+      margin: 20px 0;
+      word-wrap: break-word;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    #incorrect-guesses {
+      color: #ff4b5c;
+      font-weight: bold;
+      display: none;
+    }
+    #result {
+      font-size: 48px;
+      font-weight: bold;
+      color: #4caf50;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.5);
+    }
+    .logo {
+      width: 120px;
+      height: auto;
+    }
+    .input-with-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .input-with-logos input {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="main-content">
+    <h1>Atin's Guess-The-Words Game</h1>
+    <div id="setup-container">
+      <h2>Game Setup</h2>
+      <textarea id="paragraph-input" placeholder="Enter your secret paragraph here..." rows="4"></textarea><br>
+      <input type="number" id="max-attempts-input" placeholder="Number of guesses" min="1" /><br>
+      <div class="button-container">
+        <img src="MADE BY ATIN 2 logo .png" alt="Made by Atin Logo" class="logo">
+        <button id="start-game-button">Start Game</button>
+        <button id="share-game-button">Share Game</button>
+        <img src="newcitycollegelogo.png" alt="New City College Logo" class="logo">
+      </div>
+    </div>
+    <div id="game-container" style="display: none;">
+      <div id="paragraph-container"></div>
+      <div id="input-container" class="input-with-logos">
+        <img src="MADE BY ATIN 2 logo .png" alt="Made by Atin Logo" class="logo">
+        <input type="text" id="word-guess" placeholder="Enter a word" />
+        <img src="newcitycollegelogo.png" alt="New City College Logo" class="logo">
+      </div>
+      <div id="incorrect-guesses"></div>
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script>
+    let hiddenParagraph = "";
+    let revealedWords = [];
+    let incorrectGuesses = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('start-game-button').addEventListener('click', startGame);
+      document.getElementById('share-game-button').addEventListener('click', shareGame);
+
+      document.getElementById('word-guess').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          handleGuess();
+        }
+      });
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedParagraph = urlParams.get('paragraph');
+      if (sharedParagraph) {
+        document.getElementById('paragraph-input').value = decodeURIComponent(sharedParagraph);
+        startGame();
+      }
+    });
+
+    function startGame() {
+      document.getElementById('game-container').style.display = 'block';
+      document.getElementById('setup-container').style.display = 'none';
+
+      hiddenParagraph = document.getElementById('paragraph-input').value;
+      revealedWords = hiddenParagraph.split(/(\s+|[^\w]+)/).map(word => /[a-zA-Z0-9]/.test(word) ? '*'.repeat(word.length) : word);
+      incorrectGuesses = [];
+
+      document.getElementById('incorrect-guesses').style.display = 'none';
+      document.getElementById('result').textContent = '';
+      updateDisplay();
+    }
+
+    function handleGuess() {
+      const guessInput = document.getElementById('word-guess');
+      const guess = guessInput.value.trim().toLowerCase();
+      guessInput.value = '';
+
+      if (!guess || incorrectGuesses.includes(guess)) return;
+
+      const words = hiddenParagraph.split(/(\s+|[^\w]+)/);
+      let found = false;
+
+      words.forEach((word, index) => {
+        if (word.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === guess) {
+          revealedWords[index] = word;
+          found = true;
+        }
+      });
+
+      if (!found) {
+        incorrectGuesses.push(guess);
+        document.getElementById('incorrect-guesses').style.display = 'block';
+      }
+
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      document.getElementById('paragraph-container').textContent = revealedWords.join('');
+      document.getElementById('incorrect-guesses').textContent = 'Incorrect guesses: ' + incorrectGuesses.join(', ');
+
+      if (revealedWords.every((word, index) => !/[a-zA-Z0-9]/.test(hiddenParagraph.split(/(\s+|[^\w]+)/)[index]) || word === hiddenParagraph.split(/(\s+|[^\w]+)/)[index])) {
+        document.getElementById('result').innerHTML = '<strong> Yay!<br>You have guessed all the words!🎉</strong>';
+      }
+    }
+
+    function shareGame() {
+      const paragraph = encodeURIComponent(document.getElementById('paragraph-input').value);
+      const url = window.location.href.split('?')[0];
+      const shareLink = `${url}?paragraph=${paragraph}`;
+
+      navigator.clipboard.writeText(shareLink).then(() => {
+        alert('Game link copied to clipboard!');
+      }).catch(() => {
+        prompt('Copy this link manually:', shareLink);
+      });
+    }
+  </script>
+</body>
+</html>
