@@ -118,7 +118,7 @@
             <div id="masked-paragraph"></div>
             <input type="text" id="guess-input" placeholder="Guess a word...">
             <button id="submit-guess">Guess</button>
-            <div id="incorrect-guesses"></div>
+            <div id="Wrong: "></div>
             <div id="completion-message" style="display:none; color: green; font-weight: bold;"></div>
         </div>
     </div>
@@ -151,7 +151,7 @@
         function updateDisplay() {
             maskedParagraphDiv.innerHTML = maskedWords.join('');
             if (maskedWords.join('') === originalParagraph) {
-                completionMessage.textContent = "🎉 Yay! You've guessed all the words!";
+                completionMessage.textContent = "🎉 Yay! You've guessed all the words!🎉";
                 completionMessage.style.display = 'block';
             }
         }
