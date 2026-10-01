@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atin's Amazing Word-Guessing Game!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1f2a44;
+            --ink-soft: #55607a;
+            --page: #e6ecf3;
+            --paper: #ffffff;
+            --rule: #d5dde8;
+            --blank: #b9c5d6;
+            --blue-pen: #2b59c3;
+            --red-pen: #d1495b;
+            --highlighter: #ffe066;
+            --radius: 10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--page);
+            color: var(--ink);
+            font-family: 'Atkinson Hyperlegible', Verdana, Arial, sans-serif;
+            font-size: clamp(17px, 1.1vw, 24px);
+            line-height: 1.5;
+        }
+
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.5rem, 3.4vw, 2.2rem);
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
+        }
+
+        .logos { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .logos img { height: 44px; width: auto; display: block; }
+
+        .sheet {
+            background: var(--paper);
+            border-radius: var(--radius);
+            box-shadow: 0 1px 0 var(--rule), 0 12px 32px -18px rgba(31, 42, 68, 0.35);
+            padding: clamp(18px, 4vw, 40px);
+        }
+
+        label.intro {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .hint { color: var(--ink-soft); margin: 0 0 14px; font-size: 0.95rem; }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            font: inherit;
+            color: var(--ink);
+            background: #f6f8fb;
+            border: 2px solid var(--rule);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        textarea { min-height: 200px; resize: vertical; line-height: 1.6; }
+
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--blue-pen);
+            background: #fff;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        button {
+            font: inherit;
+            font-weight: 700;
+            border-radius: var(--radius);
+            padding: 11px 20px;
+            cursor: pointer;
+            border: 2px solid var(--ink);
+            background: var(--ink);
+            color: #fff;
+            transition: background 0.15s, color 0.15s, transform 0.05s;
+        }
+
+        button:hover { background: #2f3d5f; border-color: #2f3d5f; }
+        button:active { transform: translateY(1px); }
+
+        button.ghost { background: transparent; color: var(--ink); }
+        button.ghost:hover { background: #eef2f7; }
+
+        button:disabled, button:disabled:hover {
+            background: var(--rule); border-color: var(--rule); color: var(--ink-soft); cursor: default; transform: none;
+        }
+        button.ghost:disabled { background: transparent; }
+
+        button:focus-visible, a:focus-visible {
+            outline: 3px solid var(--highlighter);
+            outline-offset: 2px;
+        }
+
+        #share-link { margin-top: 14px; }
+        #share-link:empty { display: none; }
+        .share-box {
+            background: #f6f8fb;
+            border: 2px dashed var(--rule);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+        }
+        .share-box input { margin: 8px 0 0; font-size: 0.9rem; }
+        .share-box a { color: var(--blue-pen); font-weight: 700; }
+        .error { color: var(--red-pen); font-weight: 700; }
+
+        /* Game */
+        .progress-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+        .progress {
+            flex: 1;
+            height: 10px;
+            background: #eef2f7;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background: var(--blue-pen);
+            border-radius: 999px;
+            transition: width 0.4s ease;
+        }
+        #stats { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+        #masked-paragraph {
+            font-size: 1.35rem;
+            line-height: 2.1;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            margin: 0 0 26px;
+        }
+
+        .w { white-space: nowrap; }
+
+        /* ---------- Display mode: PCs, laptops, classroom screens ----------
+           While a game is running the page fills the window, and the text is
+           automatically sized as large as possible without scrolling. */
+        @media (min-width: 700px) and (min-height: 500px) {
+            body.playing { height: 100vh; height: 100dvh; overflow: hidden; }
+            body.playing .wrap {
+                max-width: none;
+                height: 100%;
+                padding: 1.6vh 2.5vw 2.2vh;
+                display: flex;
+                flex-direction: column;
+            }
+            body.playing header { margin-bottom: 1.4vh; }
+            body.playing h1 { font-size: clamp(1.1rem, 1.5vw, 2.2rem); }
+            body.playing .logos img { height: clamp(30px, 3.2vh, 56px); }
+            body.playing .sheet {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                padding: 2.2vh 2.5vw;
+            }
+            body.playing #game-section {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            body.playing #game-section[hidden] { display: none; }
+            body.playing .progress-row { margin-bottom: 1.6vh; }
+            body.playing #masked-paragraph {
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+                margin: 0 0 1.6vh;
+                line-height: 1.95;
+            }
+        }
+
+        .tools { display: flex; gap: 6px; flex-shrink: 0; }
+        .tools button {
+            padding: 4px 12px;
+            font-size: 0.9em;
+            min-width: 2.6em;
+        }
+
+        .bottom { flex-shrink: 0; }
+        .guess-bar .ghost { white-space: nowrap; }
+
+        .blank {
+            display: inline-block;
+            width: 0.58em;
+            margin: 0 0.06em;
+            border-bottom: 3px solid var(--blank);
+            line-height: 1;
+            vertical-align: -0.12em;
+        }
+
+        .found { color: var(--blue-pen); font-weight: 700; }
+        .given { color: var(--red-pen); font-weight: 700; }
+
+        .just-found {
+            background-image: linear-gradient(var(--highlighter), var(--highlighter));
+            background-repeat: no-repeat;
+            background-position: 0 85%;
+            background-size: 100% 45%;
+            animation: sweep 0.45s ease-out;
+            border-radius: 3px;
+        }
+        @keyframes sweep { from { background-size: 0% 45%; } to { background-size: 100% 45%; } }
+
+        .guess-bar {
+            display: flex;
+            gap: 10px;
+            border-top: 2px solid #eef2f7;
+            padding-top: 20px;
+        }
+        .guess-bar input { flex: 1; min-width: 0; font-size: 1.15em; }
+        .guess-bar .spacer { width: 10px; }
+
+        #feedback { min-height: 1.6em; margin: 12px 0 4px; font-weight: 700; }
+        #feedback.good { color: var(--blue-pen); }
+        #feedback.bad { color: var(--red-pen); }
+        #feedback.meh { color: var(--ink-soft); }
+
+        #incorrect-guesses { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 6px 0 0; }
+        #incorrect-guesses:empty { display: none; }
+        #incorrect-guesses .label { color: var(--ink-soft); font-size: 0.95rem; }
+        #incorrect-guesses .miss {
+            color: var(--red-pen);
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+        }
+
+        #completion-message {
+            margin: 18px 0 0;
+            padding: 14px 18px;
+            border-radius: var(--radius);
+            font-weight: 700;
+            font-size: 1.15rem;
+        }
+        #completion-message.win { background: #e3ecff; color: var(--blue-pen); }
+        #completion-message.given-up { background: #fde8eb; color: var(--red-pen); }
+
+
+        @media (max-width: 560px) {
+            header { flex-direction: column-reverse; align-items: flex-start; }
+            .progress-row { flex-wrap: wrap; row-gap: 10px; }
+            .progress { flex-basis: 100%; }
+            #stats { flex: 1; }
+            #fullscreen { display: none; }
+            .guess-bar { flex-wrap: wrap; }
+            .guess-bar input { flex-basis: 100%; }
+            .guess-bar button { flex: 1; padding: 11px 12px; white-space: nowrap; }
+            .guess-bar .spacer { display: none; }
+            .actions button { flex: 1; padding: 11px 12px; white-space: nowrap; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .just-found { animation: none; }
+            .progress-bar { transition: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>Atin's Amazing Word-Guessing Game!</h1>
+        <div class="logos">
+            <img src="madebyatinlogo.png" alt="Made by Atin">
+            <img src="newcitycollegelogo.png" alt="New City College">
+        </div>
+    </header>
+
+    <main class="sheet">
+        <div id="setup-section">
+            <label class="intro" for="paragraph-input">Paste a paragraph</label>
+            <p class="hint">Every word is hidden. Students guess words one at a time to fill in the text.</p>
+            <textarea id="paragraph-input" placeholder="Type or paste your text here…"></textarea>
+            <div class="actions">
+                <button id="start-game">Start game</button>
+                <button id="share-game" class="ghost">Share game</button>
+            </div>
+        </div>
+        <div id="share-link"></div>
+
+        <div id="game-section" hidden>
+            <div class="progress-row">
+                <div class="progress" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
+                <div id="stats"></div>
+                <div class="tools">
+                    <button id="text-smaller" class="ghost" title="Smaller text" aria-label="Smaller text">A−</button>
+                    <button id="text-larger" class="ghost" title="Larger text" aria-label="Larger text">A+</button>
+                    <button id="fullscreen" class="ghost" title="Full screen" aria-label="Full screen">⛶</button>
+                </div>
+            </div>
+
+            <div id="masked-paragraph" aria-live="polite"></div>
+
+            <div class="bottom">
+                <div class="guess-bar">
+                    <input type="text" id="guess-input" placeholder="Type a word and press Enter"
+                           aria-label="Your guess"
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <button id="submit-guess">Guess</button>
+                    <span class="spacer"></span>
+                    <button id="reveal-all" class="ghost">Reveal answer</button>
+                    <button id="new-game" class="ghost">New game</button>
+                </div>
+                <div id="feedback" role="status"></div>
+                <div id="incorrect-guesses"></div>
+                <div id="completion-message" hidden></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const setupSection = document.getElementById('setup-section');
+    const paragraphInput = document.getElementById('paragraph-input');
+    const startGameBtn = document.getElementById('start-game');
+    const shareGameBtn = document.getElementById('share-game');
+    const shareLinkDiv = document.getElementById('share-link');
+    const gameSection = document.getElementById('game-section');
+    const statsDiv = document.getElementById('stats');
+    const progressBar = document.getElementById('progress-bar');
+    const maskedParagraphDiv = document.getElementById('masked-paragraph');
+    const guessInput = document.getElementById('guess-input');
+    const submitGuessBtn = document.getElementById('submit-guess');
+    const revealAllBtn = document.getElementById('reveal-all');
+    const newGameBtn = document.getElementById('new-game');
+    const feedbackDiv = document.getElementById('feedback');
+    const incorrectGuessesDiv = document.getElementById('incorrect-guesses');
+    const completionMessage = document.getElementById('completion-message');
+    const textSmallerBtn = document.getElementById('text-smaller');
+    const textLargerBtn = document.getElementById('text-larger');
+    const fullscreenBtn = document.getElementById('fullscreen');
+
+    // ---------- Text sizing ----------
+    // On PCs and classroom displays the paragraph is sized to fill the space
+    // available. On phones it uses a fixed readable size and scrolls.
+    // A− / A+ adjust either of these by 15% steps.
+    let userScale = 1;
+    let fitQueued = false;
+
+    function isDisplayMode() {
+        return window.matchMedia('(min-width: 700px) and (min-height: 500px)').matches;
+    }
+
+    function fitText() {
+        fitQueued = false;
+        if (gameSection.hidden) return;
+        const el = maskedParagraphDiv;
+
+        if (!isDisplayMode()) {
+            el.style.fontSize = (21 * userScale) + 'px';
+            return;
+        }
+
+        // Binary search for the largest size that fits without scrolling.
+        // Capped so a single short sentence doesn't become absurdly huge.
+        let lo = 14;
+        let hi = Math.max(28, Math.min(window.innerWidth / 12, window.innerHeight / 5));
+        for (let i = 0; i < 14; i++) {
+            const mid = (lo + hi) / 2;
+            el.style.fontSize = mid + 'px';
+            if (el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1) lo = mid;
+            else hi = mid;
+        }
+        el.style.fontSize = (lo * userScale) + 'px';
+    }
+
+    function queueFit() {
+        if (fitQueued) return;
+        fitQueued = true;
+        requestAnimationFrame(fitText);
+    }
+
+    window.addEventListener('resize', queueFit);
+    document.addEventListener('fullscreenchange', () => {
+        fullscreenBtn.title = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+        queueFit();
+    });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueFit);
+
+    textSmallerBtn.addEventListener('click', () => { userScale = Math.max(0.4, userScale / 1.15); fitText(); });
+    textLargerBtn.addEventListener('click', () => { userScale = Math.min(3, userScale * 1.15); fitText(); });
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenEnabled) return;
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen().catch(() => {});
+    });
+
+    // A "word" is a run of letters/digits in any alphabet (é, ñ, ç count),
+    // optionally joined by apostrophes (straight or curly) or hyphens.
+    const WORD_RE = /[\p{L}\p{M}\p{N}]+(?:['’‘ʼ\-‐][\p{L}\p{M}\p{N}]+)*/gu;
+    const IS_LETTER = /[\p{L}\p{M}\p{N}]/u;
+
+    let originalParagraph = '';
+    let tokens = [];
+    let incorrectGuesses = [];
+    let gameOver = false;
+
+    // Compare ignoring case, accents, apostrophes and hyphens:
+    // "dont" = "don't" = "don’t", "jose" = "José".
+    function normalizeWord(word) {
+        return word.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    }
+
+    function tokenise(text) {
+        const result = [];
+        let last = 0;
+        for (const m of text.matchAll(WORD_RE)) {
+            if (m.index > last) result.push({ text: text.slice(last, m.index), word: false });
+            result.push({ text: m[0], word: true, key: normalizeWord(m[0]), found: false, given: false });
+            last = m.index + m[0].length;
+        }
+        if (last < text.length) result.push({ text: text.slice(last), word: false });
+        return result;
+    }
+
+    // Hidden words are drawn as one blank line per letter. The real letters are
+    // never put on the page, so they can't be copied or found by inspecting.
+    function maskedWordNode(word) {
+        const span = document.createElement('span');
+        span.className = 'w';
+        span.setAttribute('aria-label', 'hidden word');
+        for (const ch of word) {
+            if (IS_LETTER.test(ch)) {
+                const b = document.createElement('span');
+                b.className = 'blank';
+                b.textContent = '\u00a0';
+                span.appendChild(b);
+            } else {
+                span.appendChild(document.createTextNode(ch));
+            }
+        }
+        return span;
+    }
+
+    function updateDisplay(justFoundKey) {
+        maskedParagraphDiv.textContent = '';
+        const frag = document.createDocumentFragment();
+        for (const t of tokens) {
+            if (!t.word) {
+                frag.appendChild(document.createTextNode(t.text));
+            } else if (t.found || t.given) {
+                const span = document.createElement('span');
+                span.textContent = t.text;
+                span.className = t.given ? 'given' : 'found';
+                if (justFoundKey && t.key === justFoundKey) span.classList.add('just-found');
+                frag.appendChild(span);
+            } else {
+                frag.appendChild(maskedWordNode(t.text));
+            }
+        }
+        maskedParagraphDiv.appendChild(frag);
+
+        const words = tokens.filter(t => t.word);
+        const found = words.filter(t => t.found).length;
+        statsDiv.textContent = `${found} of ${words.length} words`;
+        progressBar.style.width = words.length ? (found / words.length * 100) + '%' : '0';
+
+        if (!gameOver && words.length && words.every(t => t.found)) {
+            gameOver = true;
+            setPlaying(false);
+            showCompletion("🎉 Yay! You've guessed all the words!", 'win');
+            feedbackDiv.textContent = '';
+        }
+        fitText();
+    }
+
+    function showCompletion(text, kind) {
+        completionMessage.textContent = text;
+        completionMessage.className = kind;
+        completionMessage.hidden = false;
+    }
+
+    function setFeedback(text, kind) {
+        feedbackDiv.textContent = text;
+        feedbackDiv.className = kind || '';
+    }
+
+    function renderIncorrect() {
+        incorrectGuessesDiv.textContent = '';
+        if (!incorrectGuesses.length) return;
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = 'Not in the text:';
+        incorrectGuessesDiv.appendChild(label);
+        incorrectGuesses.forEach(g => {
+            const s = document.createElement('span');
+            s.className = 'miss';
+            s.textContent = g;
+            incorrectGuessesDiv.appendChild(s);
+        });
+    }
+
+    function setPlaying(playing) {
+        guessInput.disabled = !playing;
+        submitGuessBtn.disabled = !playing;
+        revealAllBtn.disabled = !playing;
+    }
+
+    function handleGuess() {
+        if (gameOver) return;
+        const raw = guessInput.value.trim();
+        const guess = normalizeWord(raw);
+        guessInput.value = '';
+        guessInput.focus();
+        if (!guess) return;
+
+        const matches = tokens.filter(t => t.word && t.key === guess);
+
+        if (matches.length === 0) {
+            if (incorrectGuesses.includes(guess)) {
+                setFeedback(`You already tried "${raw}".`, 'meh');
+            } else {
+                incorrectGuesses.push(guess);
+                renderIncorrect();
+                setFeedback(`"${raw}" isn't in the text.`, 'bad');
+            }
+            updateDisplay();
+            return;
+        }
+
+        if (matches.every(t => t.found)) {
+            setFeedback(`You already found "${raw}".`, 'meh');
+            updateDisplay();
+            return;
+        }
+
+        matches.forEach(t => { t.found = true; });
+        setFeedback(matches.length > 1
+            ? `Yes! "${raw}" appears ${matches.length} times.`
+            : `Yes! "${raw}" is in the text.`, 'good');
+        updateDisplay(guess);
+    }
+
+    function startGame(text) {
+        originalParagraph = text.normalize('NFC');
+        tokens = tokenise(originalParagraph);
+        if (!tokens.some(t => t.word)) {
+            showShareMessage('There are no words in that text.', true);
+            return;
+        }
+        incorrectGuesses = [];
+        gameOver = false;
+        renderIncorrect();
+        setFeedback('');
+        completionMessage.hidden = true;
+        setupSection.hidden = true;
+        shareLinkDiv.textContent = '';
+        document.body.classList.add('playing');
+        gameSection.hidden = false;
+        setPlaying(true);
+        updateDisplay();
+        guessInput.focus();
+    }
+
+    // Share links hold the paragraph base64-encoded so the answer
+    // can't be read straight off the address bar.
+    function encodeText(text) {
+        const bytes = new TextEncoder().encode(text);
+        let bin = '';
+        bytes.forEach(b => { bin += String.fromCharCode(b); });
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function decodeText(code) {
+        let b64 = code.replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    }
+
+    function showShareMessage(message, isError) {
+        shareLinkDiv.textContent = '';
+        const p = document.createElement('div');
+        p.textContent = message;
+        if (isError) p.className = 'error';
+        shareLinkDiv.appendChild(p);
+    }
+
+    function showShareLink(url, copied) {
+        shareLinkDiv.textContent = '';
+        const box = document.createElement('div');
+        box.className = 'share-box';
+        const msg = document.createElement('div');
+        msg.textContent = copied ? 'Link copied. ' : 'Copy this link: ';
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = 'Open game';
+        msg.appendChild(a);
+        const input = document.createElement('input');
+        input.type = 'text'; input.readOnly = true; input.value = url;
+        input.setAttribute('aria-label', 'Share link');
+        input.addEventListener('focus', () => input.select());
+        box.appendChild(msg);
+        box.appendChild(input);
+        shareLinkDiv.appendChild(box);
+        if (!copied) input.select();
+    }
+
+    startGameBtn.addEventListener('click', () => {
+        const text = paragraphInput.value.trim();
+        if (!text) { showShareMessage('Type or paste a paragraph first.', true); return; }
+        startGame(text);
+    });
+
+    shareGameBtn.addEventListener('click', () => {
+        const text = paragraphInput.value.trim() || originalParagraph;
+        if (!text) { showShareMessage('Type or paste a paragraph first.', true); return; }
+        const url = `${window.location.origin}${window.location.pathname}?p=${encodeText(text.normalize('NFC'))}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(() => showShareLink(url, true)).catch(() => showShareLink(url, false));
+        } else {
+            showShareLink(url, false);
+        }
+    });
+
+    revealAllBtn.addEventListener('click', () => {
+        if (gameOver) return;
+        if (!confirm('Reveal all the words and end the game?')) return;
+        tokens.forEach(t => { if (t.word && !t.found) t.given = true; });
+        gameOver = true;
+        setPlaying(false);
+        setFeedback('');
+        showCompletion('Answer revealed. Words in red were not guessed.', 'given-up');
+        updateDisplay();
+    });
+
+    newGameBtn.addEventListener('click', () => { window.location.href = window.location.pathname; });
+
+    submitGuessBtn.addEventListener('click', handleGuess);
+    guessInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleGuess(); }
+    });
+
+    window.addEventListener('load', () => {
+        const params = new URLSearchParams(window.location.search);
+        try {
+            if (params.has('p')) {
+                startGame(decodeText(params.get('p')));
+            } else if (params.has('paragraph')) {
+                // Old-style links still work (already decoded by URLSearchParams).
+                startGame(params.get('paragraph'));
+            }
+        } catch (err) {
+            showShareMessage('This game link is broken or incomplete. Ask your teacher for a new link.', true);
+        }
+    });
+</script>
+</body>
+</html>
