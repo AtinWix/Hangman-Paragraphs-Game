@@ -29,7 +29,7 @@
             background: var(--page);
             color: var(--ink);
             font-family: 'Atkinson Hyperlegible', Verdana, Arial, sans-serif;
-            font-size: 18px;
+            font-size: clamp(17px, 1.1vw, 24px);
             line-height: 1.5;
         }
 
@@ -163,7 +163,7 @@
         #stats { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
         #masked-paragraph {
-            font-size: clamp(1.25rem, 2.3vw, 1.7rem);
+            font-size: 1.35rem;
             line-height: 2.1;
             white-space: pre-wrap;
             overflow-wrap: break-word;
@@ -171,6 +171,55 @@
         }
 
         .w { white-space: nowrap; }
+
+        /* ---------- Display mode: PCs, laptops, classroom screens ----------
+           While a game is running the page fills the window, and the text is
+           automatically sized as large as possible without scrolling. */
+        @media (min-width: 700px) and (min-height: 500px) {
+            body.playing { height: 100vh; height: 100dvh; overflow: hidden; }
+            body.playing .wrap {
+                max-width: none;
+                height: 100%;
+                padding: 1.6vh 2.5vw 2.2vh;
+                display: flex;
+                flex-direction: column;
+            }
+            body.playing header { margin-bottom: 1.4vh; }
+            body.playing h1 { font-size: clamp(1.1rem, 1.5vw, 2.2rem); }
+            body.playing .logos img { height: clamp(30px, 3.2vh, 56px); }
+            body.playing .sheet {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                padding: 2.2vh 2.5vw;
+            }
+            body.playing #game-section {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            body.playing #game-section[hidden] { display: none; }
+            body.playing .progress-row { margin-bottom: 1.6vh; }
+            body.playing #masked-paragraph {
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+                margin: 0 0 1.6vh;
+                line-height: 1.95;
+            }
+        }
+
+        .tools { display: flex; gap: 6px; flex-shrink: 0; }
+        .tools button {
+            padding: 4px 12px;
+            font-size: 0.9em;
+            min-width: 2.6em;
+        }
+
+        .bottom { flex-shrink: 0; }
+        .guess-bar .ghost { white-space: nowrap; }
 
         .blank {
             display: inline-block;
@@ -200,7 +249,8 @@
             border-top: 2px solid #eef2f7;
             padding-top: 20px;
         }
-        .guess-bar input { flex: 1; min-width: 0; font-size: 1.15rem; }
+        .guess-bar input { flex: 1; min-width: 0; font-size: 1.15em; }
+        .guess-bar .spacer { width: 10px; }
 
         #feedback { min-height: 1.6em; margin: 12px 0 4px; font-weight: 700; }
         #feedback.good { color: var(--blue-pen); }
@@ -226,11 +276,17 @@
         #completion-message.win { background: #e3ecff; color: var(--blue-pen); }
         #completion-message.given-up { background: #fde8eb; color: var(--red-pen); }
 
-        .game-actions { margin-top: 22px; }
 
         @media (max-width: 560px) {
             header { flex-direction: column-reverse; align-items: flex-start; }
-            .guess-bar { flex-direction: column; }
+            .progress-row { flex-wrap: wrap; row-gap: 10px; }
+            .progress { flex-basis: 100%; }
+            #stats { flex: 1; }
+            #fullscreen { display: none; }
+            .guess-bar { flex-wrap: wrap; }
+            .guess-bar input { flex-basis: 100%; }
+            .guess-bar button { flex: 1; padding: 11px 12px; white-space: nowrap; }
+            .guess-bar .spacer { display: none; }
             .actions button { flex: 1; padding: 11px 12px; white-space: nowrap; }
         }
 
@@ -266,23 +322,28 @@
             <div class="progress-row">
                 <div class="progress" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
                 <div id="stats"></div>
+                <div class="tools">
+                    <button id="text-smaller" class="ghost" title="Smaller text" aria-label="Smaller text">A−</button>
+                    <button id="text-larger" class="ghost" title="Larger text" aria-label="Larger text">A+</button>
+                    <button id="fullscreen" class="ghost" title="Full screen" aria-label="Full screen">⛶</button>
+                </div>
             </div>
 
             <div id="masked-paragraph" aria-live="polite"></div>
 
-            <div class="guess-bar">
-                <input type="text" id="guess-input" placeholder="Type a word and press Enter"
-                       aria-label="Your guess"
-                       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                <button id="submit-guess">Guess</button>
-            </div>
-            <div id="feedback" role="status"></div>
-            <div id="incorrect-guesses"></div>
-            <div id="completion-message" hidden></div>
-
-            <div class="actions game-actions">
-                <button id="reveal-all" class="ghost">Reveal answer</button>
-                <button id="new-game" class="ghost">New game</button>
+            <div class="bottom">
+                <div class="guess-bar">
+                    <input type="text" id="guess-input" placeholder="Type a word and press Enter"
+                           aria-label="Your guess"
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <button id="submit-guess">Guess</button>
+                    <span class="spacer"></span>
+                    <button id="reveal-all" class="ghost">Reveal answer</button>
+                    <button id="new-game" class="ghost">New game</button>
+                </div>
+                <div id="feedback" role="status"></div>
+                <div id="incorrect-guesses"></div>
+                <div id="completion-message" hidden></div>
             </div>
         </div>
     </main>
@@ -305,6 +366,65 @@
     const feedbackDiv = document.getElementById('feedback');
     const incorrectGuessesDiv = document.getElementById('incorrect-guesses');
     const completionMessage = document.getElementById('completion-message');
+    const textSmallerBtn = document.getElementById('text-smaller');
+    const textLargerBtn = document.getElementById('text-larger');
+    const fullscreenBtn = document.getElementById('fullscreen');
+
+    // ---------- Text sizing ----------
+    // On PCs and classroom displays the paragraph is sized to fill the space
+    // available. On phones it uses a fixed readable size and scrolls.
+    // A− / A+ adjust either of these by 15% steps.
+    let userScale = 1;
+    let fitQueued = false;
+
+    function isDisplayMode() {
+        return window.matchMedia('(min-width: 700px) and (min-height: 500px)').matches;
+    }
+
+    function fitText() {
+        fitQueued = false;
+        if (gameSection.hidden) return;
+        const el = maskedParagraphDiv;
+
+        if (!isDisplayMode()) {
+            el.style.fontSize = (21 * userScale) + 'px';
+            return;
+        }
+
+        // Binary search for the largest size that fits without scrolling.
+        // Capped so a single short sentence doesn't become absurdly huge.
+        let lo = 14;
+        let hi = Math.max(28, Math.min(window.innerWidth / 12, window.innerHeight / 5));
+        for (let i = 0; i < 14; i++) {
+            const mid = (lo + hi) / 2;
+            el.style.fontSize = mid + 'px';
+            if (el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1) lo = mid;
+            else hi = mid;
+        }
+        el.style.fontSize = (lo * userScale) + 'px';
+    }
+
+    function queueFit() {
+        if (fitQueued) return;
+        fitQueued = true;
+        requestAnimationFrame(fitText);
+    }
+
+    window.addEventListener('resize', queueFit);
+    document.addEventListener('fullscreenchange', () => {
+        fullscreenBtn.title = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+        queueFit();
+    });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueFit);
+
+    textSmallerBtn.addEventListener('click', () => { userScale = Math.max(0.4, userScale / 1.15); fitText(); });
+    textLargerBtn.addEventListener('click', () => { userScale = Math.min(3, userScale * 1.15); fitText(); });
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenEnabled) return;
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen().catch(() => {});
+    });
 
     // A "word" is a run of letters/digits in any alphabet (é, ñ, ç count),
     // optionally joined by apostrophes (straight or curly) or hyphens.
@@ -382,6 +502,7 @@
             showCompletion("🎉 Yay! You've guessed all the words!", 'win');
             feedbackDiv.textContent = '';
         }
+        fitText();
     }
 
     function showCompletion(text, kind) {
@@ -465,6 +586,7 @@
         completionMessage.hidden = true;
         setupSection.hidden = true;
         shareLinkDiv.textContent = '';
+        document.body.classList.add('playing');
         gameSection.hidden = false;
         setPlaying(true);
         updateDisplay();
