@@ -205,6 +205,7 @@
             }
             body.playing #game-section[hidden] { display: none; }
             body.playing .progress-row { margin-bottom: 1.6vh; }
+            body.playing .listen-bar { margin-bottom: 1.4vh; }
             body.playing #masked-paragraph {
                 flex: 1;
                 min-height: 0;
@@ -227,6 +228,70 @@
         }
 
         .bottom { flex-shrink: 0; }
+
+        /* ---------- Listening ---------- */
+        .listen-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px 10px;
+            margin: 0 0 18px;
+            flex-shrink: 0;
+        }
+        .listen-bar[hidden] { display: none; }
+        .listen-bar button { padding: 6px 14px; font-size: 0.95em; display: inline-flex; align-items: center; gap: 6px; }
+        .listen-bar svg { width: 1em; height: 1em; fill: currentColor; flex-shrink: 0; }
+        #listen-play { min-width: 7.2em; justify-content: center; }
+        .seg {
+            display: inline-flex;
+            border: 2px solid var(--ink);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .seg button { border: 0; border-radius: 0; background: transparent; color: var(--ink); padding: 6px 12px; }
+        .seg button:hover { background: #eef2f7; border: 0; }
+        .seg button.on, .seg button.on:hover { background: var(--ink); color: #fff; }
+        .seg-label { color: var(--ink-soft); font-size: 0.9em; margin-right: -4px; }
+        #voice-select {
+            font: inherit;
+            font-size: 0.85em;
+            color: var(--ink);
+            background: #f6f8fb;
+            border: 2px solid var(--rule);
+            border-radius: var(--radius);
+            padding: 6px 8px;
+            max-width: 15em;
+        }
+        .edge-tip {
+            flex-basis: 100%;
+            text-align: center;
+            color: var(--ink-soft);
+            font-size: 0.85em;
+        }
+        .edge-tip[hidden] { display: none; }
+        .edge-tip button {
+            background: none; border: 0; color: var(--ink-soft);
+            padding: 0 6px; font-size: 1.1em; vertical-align: middle;
+        }
+        .edge-tip button:hover { background: none; color: var(--ink); border: 0; }
+        .sent.reading {
+            background: rgba(255, 224, 102, 0.55);
+            border-radius: 6px;
+            /* Vertical padding doesn't move the text; it just stretches the
+               band down to cover the blank lines. */
+            padding: 0.02em 0 0.32em;
+            -webkit-box-decoration-break: clone;
+            box-decoration-break: clone;
+        }
+        .option {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            cursor: pointer;
+        }
+        .option input { width: 1.15em; height: 1.15em; accent-color: var(--ink); }
         .guess-bar .ghost { white-space: nowrap; }
 
         .blank {
@@ -297,6 +362,8 @@
             .guess-bar button { flex: 1; padding: 11px 12px; white-space: nowrap; }
             .guess-bar .spacer { display: none; }
             .actions button { flex: 1; padding: 11px 12px; white-space: nowrap; }
+            .listen-bar { justify-content: flex-start; }
+            #voice-select { max-width: 100%; flex-basis: 100%; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -318,6 +385,7 @@
             <label class="intro" for="paragraph-input">Paste a paragraph</label>
             <p class="hint">Every word is hidden. Students guess words one at a time to fill in the text.</p>
             <textarea id="paragraph-input" placeholder="Type or paste your text here…"></textarea>
+            <label class="option"><input type="checkbox" id="include-audio" checked> Include listening (students can hear the text read aloud)</label>
             <div class="actions">
                 <button id="start-game">Start game</button>
                 <button id="share-game" class="ghost">Share game</button>
@@ -333,6 +401,29 @@
                     <button id="text-smaller" class="ghost" title="Smaller text" aria-label="Smaller text">A−</button>
                     <button id="text-larger" class="ghost" title="Larger text" aria-label="Larger text">A+</button>
                     <button id="fullscreen" class="ghost" title="Full screen" aria-label="Full screen">⛶</button>
+                </div>
+            </div>
+
+            <div class="listen-bar" id="listen-bar" hidden>
+                <button id="listen-play"></button>
+                <button id="listen-back" class="ghost" title="Back one sentence">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2.5v14H6zM20 5v14L9.5 12z"/></svg>Back
+                </button>
+                <button id="listen-restart" class="ghost" title="Start again from the beginning">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1.5L7 6.5l5 5V8a5 5 0 1 1-5 5H4.5A7.5 7.5 0 1 0 12 5z"/></svg>Restart
+                </button>
+                <div class="seg" role="group" aria-label="Speed">
+                    <button data-rate="1" class="on">Normal</button>
+                    <button data-rate="0.75">Slower</button>
+                </div>
+                <div class="seg" role="group" aria-label="Level">
+                    <button data-mode="easy" class="on" title="Highlights the sentence being read">Easy</button>
+                    <button data-mode="hard" title="No highlight">Hard</button>
+                </div>
+                <select id="voice-select" aria-label="Voice"></select>
+                <div class="edge-tip" id="edge-tip" hidden>
+                    For a better voice, open this page in Microsoft Edge.
+                    <button id="edge-tip-close" title="Hide this tip" aria-label="Hide this tip">×</button>
                 </div>
             </div>
 
@@ -434,8 +525,9 @@
     });
 
     // A "word" is a run of letters/digits in any alphabet (é, ñ, ç count),
-    // optionally joined by apostrophes (straight or curly) or hyphens.
-    const WORD_RE = /[\p{L}\p{M}\p{N}]+(?:['’‘ʼ\-‐][\p{L}\p{M}\p{N}]+)*/gu;
+    // optionally joined by apostrophes (straight or curly). Hyphens split
+    // words: "well-known" is two words, with the hyphen shown as a clue.
+    const WORD_RE = /[\p{L}\p{M}\p{N}]+(?:['’‘ʼ][\p{L}\p{M}\p{N}]+)*/gu;
     const IS_LETTER = /[\p{L}\p{M}\p{N}]/u;
 
     let originalParagraph = '';
@@ -482,9 +574,18 @@
 
     function updateDisplay(justFoundKey) {
         maskedParagraphDiv.textContent = '';
-        const frag = document.createElement('div');
-        frag.className = 'para-inner';
+        const inner = document.createElement('div');
+        inner.className = 'para-inner';
+        // Each sentence gets its own span so the one being read can be highlighted.
+        const sentSpans = [];
         for (const t of tokens) {
+            let frag = sentSpans[t.sent];
+            if (!frag) {
+                frag = sentSpans[t.sent] = document.createElement('span');
+                frag.className = 'sent';
+                frag.dataset.s = t.sent;
+                inner.appendChild(frag);
+            }
             if (!t.word) {
                 frag.appendChild(document.createTextNode(t.text));
             } else if (t.found || t.given) {
@@ -497,7 +598,8 @@
                 frag.appendChild(maskedWordNode(t.text));
             }
         }
-        maskedParagraphDiv.appendChild(frag);
+        maskedParagraphDiv.appendChild(inner);
+        applyHighlight();
 
         const words = tokens.filter(t => t.word);
         const found = words.filter(t => t.found).length;
@@ -580,9 +682,11 @@
         updateDisplay(guess);
     }
 
-    function startGame(text) {
+    function startGame(text, withAudio = true) {
         originalParagraph = text.normalize('NFC');
         tokens = tokenise(originalParagraph);
+        buildSentences();
+        audioWanted = withAudio;
         if (!tokens.some(t => t.word)) {
             showShareMessage('There are no words in that text.', true);
             return;
@@ -598,6 +702,8 @@
         gameSection.hidden = false;
         setPlaying(true);
         updateDisplay();
+        stopSpeech();
+        refreshListenBar();
         guessInput.focus();
     }
 
@@ -648,13 +754,13 @@
     startGameBtn.addEventListener('click', () => {
         const text = paragraphInput.value.trim();
         if (!text) { showShareMessage('Type or paste a paragraph first.', true); return; }
-        startGame(text);
+        startGame(text, includeAudioBox.checked);
     });
 
     shareGameBtn.addEventListener('click', () => {
         const text = paragraphInput.value.trim() || originalParagraph;
         if (!text) { showShareMessage('Type or paste a paragraph first.', true); return; }
-        const url = `${window.location.origin}${window.location.pathname}?p=${encodeText(text.normalize('NFC'))}`;
+        const url = `${window.location.origin}${window.location.pathname}?p=${encodeText(text.normalize('NFC'))}${includeAudioBox.checked ? '' : '&a=0'}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url).then(() => showShareLink(url, true)).catch(() => showShareLink(url, false));
         } else {
@@ -673,18 +779,280 @@
         updateDisplay();
     });
 
-    newGameBtn.addEventListener('click', () => { window.location.href = window.location.pathname; });
+    newGameBtn.addEventListener('click', () => { stopSpeech(); window.location.href = window.location.pathname; });
 
     submitGuessBtn.addEventListener('click', handleGuess);
     guessInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); handleGuess(); }
     });
 
+    // ---------- Listening ----------
+    // Uses the browser's own text-to-speech (free, no account, no limits,
+    // nothing stored). Reads one sentence at a time: this avoids Chrome's
+    // habit of cutting off long speech and its unreliable pause button.
+    const includeAudioBox = document.getElementById('include-audio');
+    const listenBar = document.getElementById('listen-bar');
+    const playBtn = document.getElementById('listen-play');
+    const backBtn = document.getElementById('listen-back');
+    const restartBtn = document.getElementById('listen-restart');
+    const voiceSelect = document.getElementById('voice-select');
+    const rateBtns = listenBar.querySelectorAll('[data-rate]');
+    const modeBtns = listenBar.querySelectorAll('[data-mode]');
+    const synth = window.speechSynthesis;
+
+    // Chrome on a computer only has Google's voices, which are much less natural
+    // than Edge's, so suggest Edge there. (Not on phones or tablets.)
+    const edgeTip = document.getElementById('edge-tip');
+    function isDesktopChrome() {
+        const ua = navigator.userAgent;
+        const brands = (navigator.userAgentData && navigator.userAgentData.brands || []).map(b => b.brand);
+        const chrome = brands.length ? brands.includes('Google Chrome') : /Chrome\//.test(ua);
+        return chrome && !/Edg\/|OPR\/|Android|Mobile/.test(ua);
+    }
+    const showEdgeTip = isDesktopChrome() && recall('edge-tip') !== 'hidden';
+    document.getElementById('edge-tip-close').addEventListener('click', () => {
+        edgeTip.hidden = true;
+        store('edge-tip', 'hidden');
+        queueFit();
+    });
+
+
+    const PLAY_HTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>Listen';
+    const PAUSE_HTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h4v15H6zM14 4.5h4v15h-4z"/></svg>Pause';
+
+    let audioWanted = true;
+    let voices = [];
+    let chosenVoice = null;
+    let rate = 1;
+    let easyMode = true;
+    let chunks = [];          // [{ sent, text }] – what actually gets spoken
+    let pos = 0;              // index into chunks
+    let speaking = false;
+    let gen = 0;              // bumps on every stop, so stale callbacks are ignored
+    let currentUtterance = null; // kept so Chrome doesn't garbage-collect it mid-speech
+    let currentSent = null;
+
+    function store(key, value) { try { localStorage.setItem('wordgame-' + key, value); } catch (e) {} }
+    function recall(key) { try { return localStorage.getItem('wordgame-' + key); } catch (e) { return null; } }
+
+    // Split the text into sentences and tag every token with its sentence number.
+    function buildSentences() {
+        let s = 0;
+        const texts = [];
+        const hasWord = [];
+        for (const t of tokens) {
+            t.sent = s;
+            texts[s] = (texts[s] || '') + t.text;
+            if (t.word) hasWord[s] = true;
+            if (!t.word && (/[.!?…]["'’”)\]]*\s/.test(t.text) || /\n/.test(t.text))) s++;
+        }
+        chunks = [];
+        texts.forEach((text, i) => {
+            if (!hasWord[i]) return;
+            splitLong(text.trim()).forEach(part => chunks.push({ sent: i, text: part }));
+        });
+        pos = 0;
+        currentSent = null;
+    }
+
+    // Very long sentences are spoken in pieces (at commas where possible),
+    // because Chrome's online voices stop after about 15 seconds.
+    function splitLong(text, max = 160) {
+        if (text.length <= max) return [text];
+        const pieces = text.split(/(?<=[,;:—–])\s+/);
+        const out = [];
+        let cur = '';
+        const push = (piece) => {
+            if (!cur) cur = piece;
+            else if ((cur + ' ' + piece).length <= max) cur += ' ' + piece;
+            else { out.push(cur); cur = piece; }
+        };
+        for (const piece of pieces) {
+            if (piece.length <= max) push(piece);
+            else piece.split(/\s+/).forEach(push);
+        }
+        if (cur) out.push(cur);
+        return out;
+    }
+
+    function voiceScore(v) {
+        let score = 0;
+        const lang = (v.lang || '').replace('_', '-').toLowerCase();
+        if (lang === 'en-gb') score += 100;
+        else if (lang.startsWith('en')) score += 10;
+        if (/natural|online/i.test(v.name)) score += 50;  // Edge: Sonia, Libby, Ryan
+        else if (/google/i.test(v.name)) score += 30;     // Chrome: Google UK English
+        if (/female/i.test(v.name)) score += 1;
+        return score;
+    }
+
+    function loadVoices() {
+        if (!synth) return;
+        const all = synth.getVoices().filter(v => (v.lang || '').toLowerCase().startsWith('en'));
+        if (!all.length) return;
+        all.sort((a, b) => voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name));
+        const sameList = voices.length === all.length && voices.every((v, i) => v.name === all[i].name);
+        if (sameList) return;
+        voices = all;
+        const saved = recall('voice');
+        chosenVoice = voices.find(v => v.name === saved) || voices[0];
+        voiceSelect.textContent = '';
+        voices.forEach(v => {
+            const o = document.createElement('option');
+            o.value = v.name;
+            o.textContent = v.name.replace(/^Microsoft\s+/, '').replace(/\s*-\s*English.*$/, '') +
+                (v.lang.toLowerCase().replace('_', '-') === 'en-gb' ? ' (UK)' : ' (' + v.lang + ')');
+            if (v === chosenVoice) o.selected = true;
+            voiceSelect.appendChild(o);
+        });
+        voiceSelect.hidden = voices.length < 2;
+        refreshListenBar();
+    }
+
+    if (synth) {
+        loadVoices();
+        if ('onvoiceschanged' in synth) synth.addEventListener('voiceschanged', loadVoices);
+        // Some browsers never fire voiceschanged, so check a few times as well.
+        let tries = 0;
+        const poll = setInterval(() => { loadVoices(); if (voices.length || ++tries > 20) clearInterval(poll); }, 250);
+    } else {
+        includeAudioBox.closest('label').hidden = true;
+    }
+
+    function refreshListenBar() {
+        edgeTip.hidden = !showEdgeTip || recall('edge-tip') === 'hidden';
+        listenBar.hidden = !(audioWanted && synth && voices.length && !gameSection.hidden);
+        playBtn.innerHTML = speaking ? PAUSE_HTML : PLAY_HTML;
+        playBtn.title = speaking ? 'Pause' : 'Listen to the text';
+        queueFit();
+    }
+
+    function applyHighlight() {
+        maskedParagraphDiv.querySelectorAll('.sent.reading').forEach(el => el.classList.remove('reading'));
+        if (!easyMode || currentSent === null) return;
+        const el = maskedParagraphDiv.querySelector(`.sent[data-s="${currentSent}"]`);
+        if (el) el.classList.add('reading');
+    }
+
+    function setSent(s) { currentSent = s; applyHighlight(); }
+
+    // Chrome sometimes silently drops an utterance that is queued straight
+    // after another one finishes: it "ends" instantly without speaking. So we
+    // leave a short gap between sentences, and if a sentence ends almost
+    // immediately without ever starting, we try it again.
+    function speakChunk(i, g, attempt = 0) {
+        if (g !== gen) return;
+        if (i >= chunks.length) {           // reached the end
+            speaking = false; pos = 0; setSent(null); refreshListenBar();
+            return;
+        }
+        pos = i;
+        setSent(chunks[i].sent);
+        const u = new SpeechSynthesisUtterance(chunks[i].text);
+        u.lang = chosenVoice ? chosenVoice.lang : 'en-GB';
+        try { if (chosenVoice) u.voice = chosenVoice; } catch (e) { /* fall back to the default voice */ }
+        u.rate = rate;
+        let started = false;
+        const t0 = Date.now();
+        const next = () => setTimeout(() => speakChunk(i + 1, g), 250);
+        const retry = () => setTimeout(() => speakChunk(i, g, attempt + 1), 300);
+        const dropped = () => !started && Date.now() - t0 < 250 && attempt < 2;
+        u.onstart = () => { started = true; };
+        u.onend = () => {
+            if (g !== gen) return;
+            if (dropped()) retry(); else next();
+        };
+        u.onerror = (e) => {
+            if (g !== gen || e.error === 'interrupted' || e.error === 'canceled') return;
+            if (attempt < 2) retry(); else next();
+        };
+        currentUtterance = u;
+        if (synth.paused) synth.resume();
+        synth.speak(u);
+    }
+
+    function playFrom(i) {
+        if (!synth || !chunks.length) return;
+        const g = ++gen;
+        synth.cancel();
+        speaking = true;
+        refreshListenBar();
+        // A short gap after cancel(): Chrome sometimes ignores an immediate speak().
+        setTimeout(() => speakChunk(i, g), 120);
+    }
+
+    // "Pause" stops the current sentence; "Listen" carries on from the start of it.
+    function stopSpeech() {
+        gen++;
+        if (synth) synth.cancel();
+        speaking = false;
+        currentUtterance = null;
+    }
+
+    function backToGuessing() { if (isDisplayMode() && !guessInput.disabled) guessInput.focus(); }
+
+    playBtn.addEventListener('click', () => {
+        if (speaking) { stopSpeech(); refreshListenBar(); }
+        else playFrom(pos);
+        backToGuessing();
+    });
+
+    backBtn.addEventListener('click', () => {
+        if (!chunks.length) return;
+        // Back to the start of the previous sentence (or this one, if nothing has played yet).
+        const curSent = chunks[Math.min(pos, chunks.length - 1)].sent;
+        const firstOfCur = chunks.findIndex(c => c.sent === curSent);
+        let target = firstOfCur;
+        if (currentSent !== null && firstOfCur > 0) {
+            const prevSent = chunks[firstOfCur - 1].sent;
+            target = chunks.findIndex(c => c.sent === prevSent);
+        }
+        if (speaking) playFrom(target);
+        else { pos = target; setSent(chunks[target].sent); }
+        backToGuessing();
+    });
+
+    restartBtn.addEventListener('click', () => { playFrom(0); backToGuessing(); });
+
+    rateBtns.forEach(b => b.addEventListener('click', () => {
+        rate = parseFloat(b.dataset.rate);
+        rateBtns.forEach(x => x.classList.toggle('on', x === b));
+        store('rate', b.dataset.rate);
+        if (speaking) playFrom(pos);
+        backToGuessing();
+    }));
+
+    modeBtns.forEach(b => b.addEventListener('click', () => {
+        easyMode = b.dataset.mode === 'easy';
+        modeBtns.forEach(x => x.classList.toggle('on', x === b));
+        store('mode', b.dataset.mode);
+        applyHighlight();
+        backToGuessing();
+    }));
+
+    voiceSelect.addEventListener('change', () => {
+        chosenVoice = voices.find(v => v.name === voiceSelect.value) || chosenVoice;
+        store('voice', voiceSelect.value);
+        if (speaking) playFrom(pos);
+    });
+
+    // Restore the last speed and level used on this computer.
+    (function restoreSettings() {
+        const r = recall('rate');
+        const rb = r && [...rateBtns].find(b => b.dataset.rate === r);
+        if (rb) rb.click();
+        const m = recall('mode');
+        const mb = m && [...modeBtns].find(b => b.dataset.mode === m);
+        if (mb) mb.click();
+    })();
+
+    window.addEventListener('pagehide', () => { if (synth) synth.cancel(); });
+
     window.addEventListener('load', () => {
         const params = new URLSearchParams(window.location.search);
         try {
             if (params.has('p')) {
-                startGame(decodeText(params.get('p')));
+                startGame(decodeText(params.get('p')), params.get('a') !== '0');
             } else if (params.has('paragraph')) {
                 // Old-style links still work (already decoded by URLSearchParams).
                 startGame(params.get('paragraph'));
